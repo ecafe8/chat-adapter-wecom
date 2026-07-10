@@ -1,0 +1,43 @@
+{
+  "name": "chat-adapter-wecom",
+  "version": "0.1.0",
+  "description": "WeCom intelligent robot adapter for Chat SDK",
+  "type": "module",
+  "main": "./dist/index.js",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "files": ["dist", "README.md", "LICENSE"],
+  "scripts": {
+    "build": "tsup",
+    "clean": "rm -rf dist coverage",
+    "prepare": "tsup",
+    "test": "vitest run --coverage",
+    "test:watch": "vitest",
+    "typecheck": "tsc --noEmit"
+  },
+  "engines": { "node": ">=22" },
+  "peerDependencies": { "chat": "^4.31.0" },
+  "dependencies": {
+    "@chat-adapter/shared": "^4.31.0",
+    "ws": "^8.18.0"
+  },
+  "devDependencies": {
+    "@chat-adapter/state-memory": "^4.31.0",
+    "@types/node": "^22.0.0",
+    "@types/ws": "^8.5.13",
+    "@vitest/coverage-v8": "^4.0.0",
+    "chat": "^4.31.0",
+    "tsup": "^8.3.5",
+    "typescript": "^5.7.0",
+    "vitest": "^4.0.0"
+  },
+  "publishConfig": { "access": "public" },
+  "keywords": ["chat-sdk", "chat-adapter", "wecom", "wechat", "bot"],
+  "license": "MIT"
+}

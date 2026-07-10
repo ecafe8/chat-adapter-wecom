@@ -1,11 +1,11 @@
 ## ADDED Requirements
 
 ### Requirement: Standalone package distribution
-The adapter SHALL build as an ESM npm package with JavaScript output, TypeScript declarations, source maps, a public entry point, and only the intended distribution files.
+The adapter SHALL build as a root-level ESM npm package with JavaScript output, TypeScript declarations, source maps, a public entry point, and only the intended distribution files.
 
 #### Scenario: Package builds
 - **WHEN** the package build command runs
-- **THEN** it produces importable ESM output and declarations without source TypeScript files in the package payload
+- **THEN** it produces importable ESM output and declarations without source TypeScript files, tests, or dependency directories in the package payload
 
 ### Requirement: Consumer documentation
 The package SHALL document installation, Chat SDK registration, explicit configuration, environment variables, resident-process requirements, group mention behavior, supported features, and current limitations. The repository SHALL include a non-secret `.env.example` template with required and supported optional variables.

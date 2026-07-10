@@ -5,6 +5,7 @@ Chat SDK currently has no adapter for WeCom intelligent robots. A persistent Web
 ## What Changes
 
 - Add an npm-packaged WeCom Chat SDK adapter based on the intelligent robot WebSocket API.
+- Follow the root-level package and runtime-state patterns used by the accepted `chat-adapter-weixin` community adapter.
 - Add explicit adapter configuration for `botId` and long-connection `secret`.
 - Support environment fallbacks through `WECOM_BOT_ID` and `WECOM_BOT_SECRET`.
 - Establish, authenticate, maintain, reconnect, and shut down the WebSocket connection.
@@ -12,6 +13,7 @@ Chat SDK currently has no adapter for WeCom intelligent robots. A persistent Web
 - Map WeCom single-chat and group chat IDs to stable Chat SDK thread IDs.
 - Send non-streaming text and Markdown replies.
 - Add message de-duplication using WeCom message IDs.
+- Persist message de-duplication and callback context through Chat SDK `StateAdapter`.
 - Add automated tests and setup/usage documentation.
 - Provide a safe `.env.example` template documenting required and optional environment variables without real credentials.
 

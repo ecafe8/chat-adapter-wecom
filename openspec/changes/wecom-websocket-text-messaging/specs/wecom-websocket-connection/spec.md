@@ -15,12 +15,23 @@ The adapter SHALL accept `botId` and long-connection `secret` through constructo
 - **WHEN** either the bot ID or secret is unavailable
 - **THEN** the factory fails with a validation error naming the missing configuration
 
+### Requirement: Persistent runtime state
+The adapter SHALL use the Chat SDK `StateAdapter` for callback de-duplication and runtime response context, with bounded TTLs and adapter-specific keys.
+
+#### Scenario: Duplicate callback after restart
+- **WHEN** a message ID has already been recorded in the configured state and the callback is delivered again
+- **THEN** the adapter does not dispatch the message a second time
+
+#### Scenario: Callback context is stored
+- **WHEN** a supported callback is dispatched
+- **THEN** the adapter stores the request context needed to send a response to that thread
+
 ### Requirement: WebSocket subscription
 The adapter SHALL connect to the WeCom long-connection endpoint and SHALL send an `aibot_subscribe` request containing a unique request ID, the configured bot ID, and secret before processing callbacks.
 
-#### Scenario: Subscription succeeds
-- **WHEN** the socket opens and WeCom returns `errcode: 0`
-- **THEN** the adapter marks the connection ready and accepts callbacks
+#### Scenario: Background subscription succeeds
+- **WHEN** the adapter is initialized and the socket opens with WeCom returning `errcode: 0`
+- **THEN** the background transport loop marks the connection ready and accepts callbacks without blocking the adapter lifetime
 
 #### Scenario: Subscription fails
 - **WHEN** WeCom returns a non-zero subscription error

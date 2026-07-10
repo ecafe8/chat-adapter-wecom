@@ -35,3 +35,14 @@ The repository SHALL include an `examples/nextjs-chat` App Router application th
 #### Scenario: Example reports initialization failure
 - **WHEN** adapter initialization fails
 - **THEN** the status page and `/api/status` endpoint report a non-success state without returning the BotID Secret
+
+### Requirement: Resident Node.js example
+The repository SHALL include an `examples/hono` Node.js application using Hono and `@hono/node-server`, with health checks, both mention handler paths, environment documentation, and graceful Chat SDK shutdown.
+
+#### Scenario: Hono example starts
+- **WHEN** valid WeCom credentials are supplied and the Hono example starts
+- **THEN** Chat SDK initializes before the HTTP server accepts requests
+
+#### Scenario: Hono health check
+- **WHEN** a client requests `/health`
+- **THEN** the application returns a successful JSON health response without exposing credentials

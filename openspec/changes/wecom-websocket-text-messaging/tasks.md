@@ -38,3 +38,4 @@
 - [x] 5.5 Run build, typecheck, tests, coverage, and package-content verification.
 - [x] 5.6 Review package name, peer dependency range, version, changelog, and npm publish configuration.
 - [x] 5.7 Add and verify `examples/nextjs-chat` with server-only bot initialization, `.env.example`, status route, README, typecheck, and production build.
+- [x] 5.8 Add and verify `examples/hono` with Hono Node server, health check, mention handlers, graceful shutdown, README, typecheck, and production build.

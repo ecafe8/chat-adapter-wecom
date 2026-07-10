@@ -17,6 +17,7 @@ Chat SDK currently has no adapter for WeCom intelligent robots. A persistent Web
 - Add automated tests and setup/usage documentation.
 - Provide a safe `.env.example` template documenting required and optional environment variables without real credentials.
 - Add a runnable `examples/nextjs-chat` App Router example for manual WeCom testing.
+- Add a runnable `examples/hono` resident Node.js example for manual WeCom testing.
 
 ## Capabilities
 
@@ -37,3 +38,4 @@ Chat SDK currently has no adapter for WeCom intelligent robots. A persistent Web
 - Introduces the environment variables `WECOM_BOT_ID` and `WECOM_BOT_SECRET`.
 - Includes a non-secret `.env.example` template for local setup and deployment configuration.
 - Adds a local Next.js example that initializes the resident Chat SDK bot and exposes adapter status.
+- Adds a Hono Node.js example with health checks and graceful shutdown.

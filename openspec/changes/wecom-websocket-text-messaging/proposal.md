@@ -16,6 +16,7 @@ Chat SDK currently has no adapter for WeCom intelligent robots. A persistent Web
 - Persist message de-duplication and callback context through Chat SDK `StateAdapter`.
 - Add automated tests and setup/usage documentation.
 - Provide a safe `.env.example` template documenting required and optional environment variables without real credentials.
+- Add a runnable `examples/nextjs-chat` App Router example for manual WeCom testing.
 
 ## Capabilities
 
@@ -35,3 +36,4 @@ Chat SDK currently has no adapter for WeCom intelligent robots. A persistent Web
 - Requires a persistent process for production because each WeCom robot allows only one active connection.
 - Introduces the environment variables `WECOM_BOT_ID` and `WECOM_BOT_SECRET`.
 - Includes a non-secret `.env.example` template for local setup and deployment configuration.
+- Adds a local Next.js example that initializes the resident Chat SDK bot and exposes adapter status.

@@ -84,7 +84,9 @@ export class WeComProtocolClient {
           this.options.logger.info("WeCom WebSocket subscribed");
           return;
         }
-        void this.options.onFrame(frame);
+        void this.options.onFrame(frame).catch((error) => {
+          this.options.logger.error("Failed to process WeCom WebSocket frame", error);
+        });
       });
       socket.on("open", () => socket.send(JSON.stringify({
         cmd: "aibot_subscribe",

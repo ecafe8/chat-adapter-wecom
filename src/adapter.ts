@@ -128,11 +128,20 @@ export class WeComAdapter implements Adapter<WeComThreadId, WeComMessageCallback
   private async processFrame(frame: WeComFrame): Promise<void> {
     if (!this.chat || !this.state || frame.cmd !== "aibot_msg_callback") return;
     const callback = frame as WeComMessageCallback;
+    this.logger.info("Received WeCom message callback", {
+      msgid: callback.body.msgid,
+      chattype: callback.body.chattype,
+      msgtype: callback.body.msgtype,
+    });
     if (!(await this.state.markMessageSeen(callback.body.msgid))) return;
     if (callback.body.msgtype !== "text" || !callback.body.text?.content) return;
     const threadId = this.threadIdFor(callback.body);
     await this.state.setRequestId(threadId, callback.headers.req_id);
-    await this.chat.processMessage(this, threadId, async () => this.parseMessage(callback));
+    try {
+      await this.chat.processMessage(this, threadId, async () => this.parseMessage(callback));
+    } catch (error) {
+      this.logger.error("Failed to dispatch WeCom message callback", error);
+    }
   }
 
   private threadIdFor(body: WeComMessageCallback["body"]): string {

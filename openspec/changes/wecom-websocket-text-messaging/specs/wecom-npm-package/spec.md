@@ -24,3 +24,14 @@ The package SHALL provide repeatable typecheck, unit test, integration test, and
 #### Scenario: Quality commands run
 - **WHEN** a maintainer runs the documented quality commands
 - **THEN** typecheck and tests complete deterministically without requiring real WeCom credentials
+
+### Requirement: Manual test example
+The repository SHALL include an `examples/nextjs-chat` App Router application that initializes the adapter only on the server, documents required environment variables, and exposes a status endpoint for local verification.
+
+#### Scenario: Example starts without exposing secrets
+- **WHEN** a user copies the example environment template, supplies credentials, and starts the development server
+- **THEN** the Chat SDK bot is initialized in a server-only module and no credential is rendered into the browser response
+
+#### Scenario: Example reports initialization failure
+- **WHEN** adapter initialization fails
+- **THEN** the status page and `/api/status` endpoint report a non-success state without returning the BotID Secret

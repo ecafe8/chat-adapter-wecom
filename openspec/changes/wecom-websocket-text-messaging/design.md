@@ -14,6 +14,7 @@ The repository currently contains OpenSpec configuration but no adapter implemen
 - Provide a checked-in environment template that contains placeholders only.
 - Persist callback de-duplication and response context through Chat SDK `StateAdapter`.
 - Keep connection ownership and shutdown behavior deterministic.
+- Provide a local Next.js App Router example for manual end-to-end testing.
 
 **Non-Goals:**
 
@@ -30,6 +31,7 @@ The repository currently contains OpenSpec configuration but no adapter implemen
 - **Encode thread IDs with URL-safe segments:** Use `wecom:single:<userid>` and `wecom:group:<chatid>`, with encoding/decoding validation so platform IDs cannot corrupt the separator format.
 - **Use `StateAdapter` for idempotency and runtime context:** Store processed `msgid` keys and callback request context with TTLs. This preserves behavior across restarts and supports distributed deployments without introducing a second storage abstraction.
 - **Use a small transport boundary:** Keep WebSocket protocol framing, request IDs, and reconnect logic separate from Chat SDK message parsing and posting so protocol tests do not require a live Chat instance.
+- **Use a server-only Next.js singleton in the example:** The example initializes one Chat instance in `src/lib/bot.ts`, stores it on `globalThis` for development reload stability, and exposes only status data from a route handler. It is explicitly a resident-process test app, not a serverless deployment pattern.
 
 ## Risks / Trade-offs
 

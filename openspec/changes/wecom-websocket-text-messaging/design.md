@@ -10,6 +10,7 @@ The repository currently contains OpenSpec configuration but no adapter implemen
 - Support single-chat text messages and group messages that mention the robot.
 - Preserve stable thread identity across process restarts.
 - Make credentials explicit in configuration while supporting environment fallbacks.
+- Provide a checked-in environment template that contains placeholders only.
 - Keep connection ownership and shutdown behavior deterministic.
 
 **Non-Goals:**
@@ -22,6 +23,7 @@ The repository currently contains OpenSpec configuration but no adapter implemen
 
 - **Use a resident WebSocket connection:** WeCom long connection avoids public webhook and XML encryption requirements and is required for low-latency group messaging. A traditional HTTP callback was rejected for this phase because it adds encryption and public ingress complexity.
 - **Use `botId` and `secret` configuration with environment fallback:** The factory accepts explicit values and falls back to `WECOM_BOT_ID` and `WECOM_BOT_SECRET`. Explicit values win, missing values fail fast, and secrets are never logged.
+- **Ship `.env.example` as setup documentation:** The template lists `WECOM_BOT_ID` and `WECOM_BOT_SECRET` plus supported optional tuning variables with safe placeholder values. It SHALL never contain a real BotID, Secret, or production credential.
 - **Own the connection in the adapter lifecycle:** `initialize()` starts the connection and `disconnect()` stops heartbeat, reconnect timers, and the socket. This matches Chat SDK shutdown semantics and makes the adapter usable by resident applications.
 - **Encode thread IDs with URL-safe segments:** Use `wecom:single:<userid>` and `wecom:group:<chatid>`, with encoding/decoding validation so platform IDs cannot corrupt the separator format.
 - **Use `msgid` for idempotency:** A bounded in-memory de-duplication set prevents duplicate callback delivery in one process. Durable cross-process idempotency is deferred until a state integration is defined.

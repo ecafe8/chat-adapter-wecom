@@ -29,4 +29,5 @@ WeCom intelligent robot long connections support native streaming, but each stre
 - Adds stream state and cancellation handling to the adapter runtime.
 - Requires integration with Chat SDK's streaming adapter method or equivalent postable stream path.
 - Adds no new credentials; it uses the existing `WECOM_BOT_ID` and `WECOM_BOT_SECRET` configuration.
+- Reuses the `.env.example` template introduced by `wecom-websocket-text-messaging`; it does not create a second environment template.
 - Does not add template-card support; that remains a later change.

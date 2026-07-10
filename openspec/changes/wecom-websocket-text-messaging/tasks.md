@@ -3,6 +3,7 @@
 - [ ] 1.1 Create the standalone TypeScript ESM npm package metadata, exports, build configuration, typecheck configuration, test configuration, and license.
 - [ ] 1.2 Define adapter configuration and environment fallback for `botId`, `secret`, WebSocket URL, heartbeat, reconnect, and logger options.
 - [ ] 1.3 Add validation errors and safe logging rules that never print credentials.
+- [ ] 1.4 Add a non-secret `.env.example` with `WECOM_BOT_ID`, `WECOM_BOT_SECRET`, and documented optional transport settings.
 
 ## 2. WebSocket transport
 
@@ -31,7 +32,8 @@
 ## 5. Documentation and release readiness
 
 - [ ] 5.1 Write README setup instructions, environment variable reference, usage example, feature matrix, group mention semantics, and limitations.
-- [ ] 5.2 Document one-active-connection deployment requirements and graceful shutdown expectations.
-- [ ] 5.3 Document local test strategy and all quality commands.
-- [ ] 5.4 Run build, typecheck, tests, coverage, and package-content verification.
-- [ ] 5.5 Review package name, peer dependency range, version, changelog, and npm publish configuration.
+- [ ] 5.2 Ensure README and `.env.example` use the same variable names and explain that real credentials must be supplied outside version control.
+- [ ] 5.3 Document one-active-connection deployment requirements and graceful shutdown expectations.
+- [ ] 5.4 Document local test strategy and all quality commands.
+- [ ] 5.5 Run build, typecheck, tests, coverage, and package-content verification.
+- [ ] 5.6 Review package name, peer dependency range, version, changelog, and npm publish configuration.

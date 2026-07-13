@@ -3,8 +3,13 @@ import { ConsoleLogger } from "chat";
 import { WeComProtocolClient } from "./protocol.js";
 import type { WebSocketLike } from "./types.js";
 
+const CONNECTING = 0;
+const OPEN = 1;
+const CLOSED = 3;
+
 class FakeSocket implements WebSocketLike {
-  readonly OPEN = 1;
+  readonly OPEN = OPEN;
+  readyState = CONNECTING;
   sent: string[] = [];
   private listeners = new Map<string, ((...args: any[]) => void)[]>();
 
@@ -12,7 +17,14 @@ class FakeSocket implements WebSocketLike {
     this.listeners.set(event, [...(this.listeners.get(event) ?? []), listener]);
   }
   send(data: string): void { this.sent.push(data); }
-  close(): void { this.emit("close"); }
+  close(): void {
+    this.readyState = CLOSED;
+    this.emit("close");
+  }
+  open(): void {
+    this.readyState = OPEN;
+    this.emit("open");
+  }
   emit(event: string, ...args: unknown[]): void { for (const fn of this.listeners.get(event) ?? []) fn(...args); }
   receive(frame: unknown): void { this.emit("message", JSON.stringify(frame)); }
 }
@@ -37,7 +49,7 @@ describe("WeComProtocolClient", () => {
       onFrame,
     });
     client.start();
-    socket.emit("open");
+    socket.open();
     const request = JSON.parse(socket.sent[0]);
     expect(request).toMatchObject({ cmd: "aibot_subscribe", body: { bot_id: "bot-1", secret: "secret-1" } });
     socket.receive({ headers: { req_id: request.headers.req_id }, errcode: 0 });
@@ -55,7 +67,7 @@ describe("WeComProtocolClient", () => {
       onFrame: async () => {},
     });
     client.start();
-    socket.emit("open");
+    socket.open();
     const request = JSON.parse(socket.sent[0]);
     socket.receive({ headers: { req_id: request.headers.req_id }, errcode: 0 });
     vi.advanceTimersByTime(11);
@@ -65,5 +77,30 @@ describe("WeComProtocolClient", () => {
     vi.advanceTimersByTime(100);
     expect(socket.sent).toHaveLength(sent);
     vi.useRealTimers();
+  });
+
+  it("rejects send() when the socket is not actually open", async () => {
+    const socket = new FakeSocket();
+    const client = new WeComProtocolClient({
+      config: { ...config, webSocketFactory: () => socket },
+      logger: new ConsoleLogger("silent"),
+      onFrame: async () => {},
+    });
+
+    // Never subscribed / still connecting: OPEN is a constant (always 1 on
+    // a real `ws` socket) so the guard must check `readyState`, not `OPEN`.
+    expect(() => client.send({ cmd: "ping" })).toThrow("WeCom WebSocket is not connected");
+
+    client.start();
+    socket.open();
+    const request = JSON.parse(socket.sent[0]);
+    socket.receive({ headers: { req_id: request.headers.req_id }, errcode: 0 });
+
+    // Socket closes (e.g. dropped by the server) but a reconnect has not
+    // completed yet: send() must not silently hand data to a dead socket.
+    socket.close();
+    expect(() => client.send({ cmd: "ping" })).toThrow("WeCom WebSocket is not connected");
+
+    await client.stop();
   });
 });

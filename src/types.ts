@@ -59,6 +59,7 @@ export type WeComFrame = WeComMessageCallback | WeComEventCallback | Record<stri
 
 export interface WebSocketLike {
   readonly OPEN: number;
+  readonly readyState: number;
   send(data: string): void;
   close(): void;
   on(event: "open" | "message" | "error" | "close", listener: (...args: any[]) => void): void;
@@ -68,8 +69,6 @@ export type WebSocketFactory = (url: string) => WebSocketLike;
 
 export interface WeComRuntimeState {
   markMessageSeen(messageId: string): Promise<boolean>;
-  setRequestId(threadId: string, requestId: string): Promise<void>;
-  getRequestId(threadId: string): Promise<string | undefined>;
 }
 
 export type WeComState = StateAdapter;

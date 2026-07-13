@@ -18,6 +18,7 @@ import { stringifyMarkdown } from "chat";
 import { WeComFormatConverter } from "./format-converter.js";
 import { resolveConfig } from "./config.js";
 import { WeComProtocolClient } from "./protocol.js";
+import { getCurrentRequestId, runWithRequestId } from "./request-context.js";
 import { WeComRuntimeState } from "./state.js";
 import { channelIdFromThreadId, decodeThreadId, encodeThreadId } from "./thread-id.js";
 import type { ResolvedWeComAdapterConfig, WeComAdapterConfig, WeComFrame, WeComMessageCallback, WeComThreadId } from "./types.js";
@@ -98,7 +99,7 @@ export class WeComAdapter implements Adapter<WeComThreadId, WeComMessageCallback
 
   async postMessage(threadId: string, message: AdapterPostableMessage): Promise<RawMessage<WeComMessageCallback>> {
     if (!this.chat || !this.state) throw new Error("WeCom adapter is not initialized");
-    const requestId = await this.state!.getRequestId(threadId);
+    const requestId = getCurrentRequestId();
     if (!requestId) throw new Error(`No active WeCom callback context for ${threadId}`);
     const content = this.renderPostable(message);
     if (!content) throw new Error("Cannot send an empty WeCom message");
@@ -136,9 +137,9 @@ export class WeComAdapter implements Adapter<WeComThreadId, WeComMessageCallback
     if (!(await this.state.markMessageSeen(callback.body.msgid))) return;
     if (callback.body.msgtype !== "text" || !callback.body.text?.content) return;
     const threadId = this.threadIdFor(callback.body);
-    await this.state.setRequestId(threadId, callback.headers.req_id);
     try {
-      await this.chat.processMessage(this, threadId, async () => this.parseMessage(callback));
+      await runWithRequestId(callback.headers.req_id, () =>
+        this.chat!.processMessage(this, threadId, async () => this.parseMessage(callback)));
     } catch (error) {
       this.logger.error("Failed to dispatch WeCom message callback", error);
     }

@@ -36,10 +36,4 @@ describe("WeComRuntimeState", () => {
     expect(await state.markMessageSeen("msg-1")).toBe(true);
     expect(await state.markMessageSeen("msg-1")).toBe(false);
   });
-
-  it("stores callback request context", async () => {
-    const state = new WeComRuntimeState(fakeState(), "bot-1");
-    await state.setRequestId("wecom:group:chat", "req-1");
-    expect(await state.getRequestId("wecom:group:chat")).toBe("req-1");
-  });
 });

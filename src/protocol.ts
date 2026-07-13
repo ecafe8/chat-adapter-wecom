@@ -38,7 +38,7 @@ export class WeComProtocolClient {
   }
 
   send(frame: Record<string, unknown>): void {
-    if (!this.socket || this.socket.OPEN !== 1) throw networkError("WeCom WebSocket is not connected");
+    if (!this.socket || this.socket.readyState !== this.socket.OPEN) throw networkError("WeCom WebSocket is not connected");
     this.socket.send(JSON.stringify(frame));
   }
 

@@ -44,6 +44,8 @@ Confirmed against the official WeCom docs (智能机器人长连接, `developer.
 - Per-conversation send-rate limit: **30 messages/minute, 1000/hour**, counting both replies and proactive pushes. This motivates coalescing stream updates rather than sending on every chunk.
 - The non-streaming `markdown` message shape (`{ msgtype: "markdown", markdown: { content } }`) used by `postMessage` is correct and unrelated to the stream shape above — the two must not be conflated.
 
+**Independent cross-check:** The community-maintained `@wecom/aibot-node-sdk` (`github.com/WecomTeam/aibot-node-sdk`, not an npm dependency of this package — reference only) exposes the same shape as its `StreamReplyBody` type: `{ msgtype: "stream", stream: { id, finish?, content?, msg_item?, feedback? } }`, confirming the fix above independently of the official docs. Two fields it supports that this adapter does not yet use: `stream.content` is capped at **20480 bytes** by WeCom (not currently enforced/truncated here — a future hardening item), and `stream.msg_item`/`stream.feedback` (inline images on the final frame; user-feedback correlation id) are out of scope for this change (see Non-Goals).
+
 ## Goals / Non-Goals
 
 **Goals:**

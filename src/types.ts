@@ -60,10 +60,12 @@ export interface WeComStreamFrame {
   cmd: "aibot_respond_msg";
   headers: { req_id: string };
   body: {
-    msgtype: "markdown";
-    markdown: { content: string };
-    stream_id: string;
-    finish: boolean;
+    msgtype: "stream";
+    stream: {
+      id: string;
+      finish: boolean;
+      content: string;
+    };
   };
 }
 

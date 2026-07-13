@@ -136,12 +136,13 @@ describe("WeComAdapter streaming", () => {
     (adapter as unknown as { protocol: { send: typeof socket.send } }).protocol = { send: socket.send };
     const handleFrame = (adapter as unknown as { processFrame: (frame: unknown) => Promise<void> }).processFrame;
     await handleFrame.call(adapter, callback);
-    const frames = socket.send.mock.calls.map(([frame]) => frame as { headers: { req_id: string }; body: { stream_id: string; finish: boolean; markdown: { content: string } } });
+    const frames = socket.send.mock.calls.map(([frame]) => frame as { headers: { req_id: string }; body: { msgtype: string; stream: { id: string; finish: boolean; content: string } } });
     expect(frames.length).toBeGreaterThanOrEqual(2);
     expect(frames.every((f) => f.headers.req_id === "req-1")).toBe(true);
-    expect(new Set(frames.map((f) => f.body.stream_id)).size).toBe(1);
-    expect(frames.at(-1)?.body.finish).toBe(true);
-    expect(frames.at(-1)?.body.markdown.content).toBe("hello");
+    expect(frames.every((f) => f.body.msgtype === "stream")).toBe(true);
+    expect(new Set(frames.map((f) => f.body.stream.id)).size).toBe(1);
+    expect(frames.at(-1)?.body.stream.finish).toBe(true);
+    expect(frames.at(-1)?.body.stream.content).toBe("hello");
   });
 
   it("keeps concurrent streams isolated by req_id and stream_id (4.2)", async () => {
@@ -164,13 +165,13 @@ describe("WeComAdapter streaming", () => {
     };
     await Promise.all([handleFrame.call(adapter, callback), handleFrame.call(adapter, second)]);
 
-    const frames = socket.send.mock.calls.map(([frame]) => frame as { headers: { req_id: string }; body: { stream_id: string } });
+    const frames = socket.send.mock.calls.map(([frame]) => frame as { headers: { req_id: string }; body: { stream: { id: string } } });
     const first = frames.filter((f) => f.headers.req_id === "req-1");
     const secondFrames = frames.filter((f) => f.headers.req_id === "req-2");
     expect(first.length).toBeGreaterThanOrEqual(2);
     expect(secondFrames.length).toBeGreaterThanOrEqual(2);
-    const firstStreamIds = new Set(first.map((f) => f.body.stream_id));
-    const secondStreamIds = new Set(secondFrames.map((f) => f.body.stream_id));
+    const firstStreamIds = new Set(first.map((f) => f.body.stream.id));
+    const secondStreamIds = new Set(secondFrames.map((f) => f.body.stream.id));
     expect(firstStreamIds.size).toBe(1);
     expect(secondStreamIds.size).toBe(1);
     for (const id of firstStreamIds) expect(secondStreamIds.has(id)).toBe(false);

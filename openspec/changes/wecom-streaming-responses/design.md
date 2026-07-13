@@ -17,6 +17,33 @@ stream?(threadId: string, textStream: AsyncIterable<string | StreamChunk>, optio
 - `StreamOptions.updateIntervalMs` (default 1000ms) is documented for fallback mode (GChat/Teams); WeCom uses native frames and applies its own coalescing when needed.
 - `Thread.post(asyncIterable)` is the consumer-facing entry point; the SDK dispatches it to `adapter.stream()` when the method exists.
 
+## Verified WeCom stream frame protocol
+
+Confirmed against the official WeCom docs (智能机器人长连接, `developer.work.weixin.qq.com/document/path/101463`, and 接收消息, `.../100719`). An earlier implementation incorrectly reused the non-streaming `markdown` message shape with a flat `stream_id` field, which WeCom rendered as independent messages instead of updates to one stream (each frame lacked the fields WeCom needs to correlate them). The confirmed request shape is:
+
+```json
+{
+  "cmd": "aibot_respond_msg",
+  "headers": { "req_id": "REQUEST_ID" },
+  "body": {
+    "msgtype": "stream",
+    "stream": {
+      "id": "STREAMID",
+      "finish": false,
+      "content": "accumulated text so far"
+    }
+  }
+}
+```
+
+- `body.msgtype` must be `"stream"` (not `"markdown"`); the stream payload is nested under `body.stream`, not at the top level.
+- `body.stream.id` correlates frames into one message: the **first** use of a `stream.id` creates the message, subsequent uses with the same id **update** it, and `finish: true` ends it (message becomes non-updatable).
+- `body.stream.content` carries the full accumulated content on every frame (WeCom replaces the displayed content, it does not append deltas).
+- All frames for one response reuse the callback's `headers.req_id`; `stream.id` is generated once per response and is independent of `req_id`.
+- WeCom enforces a **10-minute** limit from the first stream frame to `finish: true`, after which the message auto-ends — matches the adapter's internal deadline (default 9 min, clamped to ≤10 min).
+- Per-conversation send-rate limit: **30 messages/minute, 1000/hour**, counting both replies and proactive pushes. This motivates coalescing stream updates rather than sending on every chunk.
+- The non-streaming `markdown` message shape (`{ msgtype: "markdown", markdown: { content } }`) used by `postMessage` is correct and unrelated to the stream shape above — the two must not be conflated.
+
 ## Goals / Non-Goals
 
 **Goals:**
@@ -37,22 +64,23 @@ stream?(threadId: string, textStream: AsyncIterable<string | StreamChunk>, optio
 
 ## Decisions
 
-- **Implement `stream()` rather than overload `postMessage`:** The verified contract routes async iterables through the dedicated `stream()` hook. `postMessage` stays single-shot for plain text/markdown; `stream()` owns the streaming lifecycle and returns a `RawMessage` (never `null`, so the core fallback never runs).
-- **Use native WeCom streams rather than post-and-edit:** WeCom supports `aibot_respond_msg` with `stream.id`, which avoids message edit emulation and gives lower latency. Returning `null` to trigger the post+edit fallback is explicitly avoided.
+- **Implement `stream()` rather than overload `postMessage`:** The verified contract routes async iterables through the dedicated `stream()` hook. `postMessage` stays single-shot for plain text/markdown (`msgtype: "markdown"`); `stream()` owns the streaming lifecycle using the distinct `msgtype: "stream"` shape and returns a `RawMessage` (never `null`, so the core fallback never runs).
+- **Use native WeCom streams rather than post-and-edit:** WeCom supports `aibot_respond_msg` with `body.stream.id`, which avoids message edit emulation and gives lower latency. Returning `null` to trigger the post+edit fallback is explicitly avoided.
 - **Correlate by callback context, not thread:** The existing `AsyncLocalStorage` already preserves `req_id`. A new per-stream context adds `streamId`, accumulated content, deadline, and cancellation state. `req_id` continues to come from `getCurrentRequestId()` inside `stream()`.
-- **Keep `req_id` stable and `stream.id` unique:** `req_id` is copied from the incoming callback for every update; `stream.id` is generated once per `stream()` invocation. This matches WeCom's protocol semantics.
+- **Keep `req_id` stable and `stream.id` unique:** `req_id` is copied from the incoming callback for every update; `stream.id` is generated once per `stream()` invocation. This matches WeCom's confirmed protocol semantics.
 - **Accumulate content for each update:** Send accumulated text, not only the newest delta, because WeCom stream updates replace the displayed content associated with the stream.
 - **Extract text from `StreamChunk`:** When a chunk is a `MarkdownTextChunk`, append `chunk.text`; for `task_update`/`plan_update`, ignore. Plain string chunks append directly.
 - **Always finalize:** On normal completion send `finish: true`. On iterator failure or deadline, send a best-effort final frame and surface the original error to Chat SDK logging.
 - **Bound stream state:** Delete completed contexts immediately and expire abandoned contexts after the platform deadline to prevent memory growth.
+- **Coalesce by default (1000ms):** Given the documented 30/min, 1000/hour per-conversation rate limit, the default `streamCoalesceMs` batches rapid chunks instead of sending on every chunk.
 
 ## Risks / Trade-offs
 
-- [Resolved] Chat SDK stream hook shape is confirmed: dedicated optional `stream()` method on `Adapter` (see Verified contract above). Verified against `chat@4.33.0`.
-- [WeCom frame shape] The `aibot_respond_msg` `stream.id` / `finish` frame fields are assumed from WeCom intelligent robot streaming docs → confirm against live traffic / official API reference during implementation before locking the frame builder.
+- [Resolved] Chat SDK stream hook shape is confirmed: dedicated optional `stream()` method on `Adapter` (see Verified Chat SDK streaming contract above). Verified against `chat@4.33.0`.
+- [Resolved] WeCom `aibot_respond_msg` stream frame shape is confirmed against official docs: `msgtype: "stream"`, `body.stream: { id, finish, content }` (see Verified WeCom stream frame protocol above). The initial implementation used the wrong shape (`markdown` msgtype + flat `stream_id`), which WeCom rendered as separate messages instead of stream updates — fixed.
 - [Concurrent updates] Multiple callbacks in one group may interleave → use per-response context and serialize writes only at the WebSocket frame boundary.
-- [Rate limits] WeCom limits messages per conversation → throttle or coalesce updates if the chosen Chat SDK stream emits too many chunks.
-- [Deadline] WeCom ends streams after ten minutes → enforce an internal deadline earlier than the platform limit and finalize deterministically.
+- [Rate limits] WeCom limits messages per conversation to 30/min, 1000/hour (confirmed) → default coalescing interval of 1000ms batches updates; tune `WECOM_STREAM_COALESCE_MS` for higher-frequency sources.
+- [Deadline] WeCom ends streams after ten minutes (confirmed) → enforce an internal deadline earlier than the platform limit and finalize deterministically.
 - [Disconnect during stream] The socket may disappear while an iterator is active → cancel or stop forwarding and let reconnect handle future callbacks.
 
 ## Migration Plan
@@ -61,5 +89,5 @@ Consumers already using non-streaming text replies require no configuration chan
 
 ## Open Questions
 
-- [Resolved] Chat SDK exposes a dedicated `stream()` adapter method (not `postMessage` routing). See Verified contract.
-- [Open] Decide the minimum update interval/coalescing policy after measuring Chat SDK chunk frequency and WeCom rate limits. `StreamOptions.updateIntervalMs` (default 1000ms) is available as a reference but applies to fallback mode.
+- [Resolved] Chat SDK exposes a dedicated `stream()` adapter method (not `postMessage` routing). See Verified Chat SDK streaming contract.
+- [Resolved] WeCom stream frame shape and rate limits confirmed against official docs (30/min, 1000/hour per conversation; 10-minute stream lifetime). Default `streamCoalesceMs` set to 1000ms accordingly; adjustable per deployment if real-world usage shows it's too conservative or too aggressive.

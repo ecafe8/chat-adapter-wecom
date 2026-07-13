@@ -12,11 +12,11 @@
 ## 3. Native WeCom streaming
 
 - [x] 3.1 Implement the `stream()` adapter method (`Adapter.stream`) consuming `AsyncIterable<string | StreamChunk>`; do not return `null` (avoid the post+edit fallback). **Implemented in `adapter.ts` `stream()`; returns `RawMessage` with the stream id.**
-- [x] 3.2 Implement initial, incremental, and final `aibot_respond_msg` stream frames with a generated, stable `stream.id` and `finish: true` on the final frame. **Implemented in `streaming.ts` `sendFrame()`; frame shape in `types.ts` `WeComStreamFrame`.**
+- [x] 3.2 Implement initial, incremental, and final `aibot_respond_msg` stream frames with a generated, stable `stream.id` and `finish: true` on the final frame. **Implemented in `streaming.ts` `sendFrame()`; frame shape in `types.ts` `WeComStreamFrame` — confirmed against official docs as `{ msgtype: "stream", stream: { id, finish, content } }` (an earlier revision incorrectly reused the `markdown` shape with a flat `stream_id`, which WeCom rendered as separate messages; fixed).**
 - [x] 3.3 Implement accumulated-content rendering and safe text/Markdown handling for stream updates. Extract text from `MarkdownTextChunk`; ignore `task_update`/`plan_update`; append plain string chunks directly. **Implemented in `streaming.ts` `extractStreamText()` + `run()` accumulation loop.**
 - [x] 3.4 Implement deadline enforcement at or below ten minutes (internal deadline earlier than the platform limit). **Implemented via `streamDeadlineMs` (default 9 min, clamped to ≤10 min) in `config.ts` + `WeComStreamer.startDeadline()`/`cancel("deadline")`.**
 - [x] 3.5 Implement iterator error handling, cancellation, transport failure handling, and finalization (best-effort final frame when usable). **Implemented in `WeComStreamer.run()` try/catch/finally and `cancel()`; `onDisconnect` cancels active streams on socket loss.**
-- [x] 3.6 Add coalescing or throttling if required by measured WeCom rate limits (reference: `StreamOptions.updateIntervalMs` default 1000ms). **Implemented configurable coalescing via `streamCoalesceMs` (default 100ms) in `config.ts` + `WeComStreamer.scheduleFlush()`; dedup guard skips no-op non-final frames.**
+- [x] 3.6 Add coalescing or throttling if required by measured WeCom rate limits (reference: `StreamOptions.updateIntervalMs` default 1000ms). **Implemented configurable coalescing via `streamCoalesceMs` (default 1000ms, matching the confirmed WeCom per-conversation limit of 30 msgs/min) in `config.ts` + `WeComStreamer.scheduleFlush()`; dedup guard skips no-op non-final frames.**
 
 ## 4. Tests
 
@@ -32,6 +32,6 @@
 
 - [x] 5.1 Document native streaming behavior, response deadlines, limitations, and cancellation semantics. **Documented in README "Streaming replies" section.**
 - [x] 5.2 Update the feature matrix and usage examples with a streaming example. **Feature matrix updated to "Supported via `thread.post(asyncIterable)`"; streaming example added.**
-- [x] 5.3 Document rate limits and any configured coalescing interval. **`WECOM_STREAM_COALESCE_MS` / `WECOM_STREAM_DEADLINE_MS` documented in env table and `.env.example`.**
+- [x] 5.3 Document rate limits and any configured coalescing interval. **`WECOM_STREAM_COALESCE_MS` / `WECOM_STREAM_DEADLINE_MS` documented in env table and `.env.example`; confirmed WeCom per-conversation limit (30/min, 1000/hour) documented in `design.md`.**
 - [x] 5.4 Run typecheck, unit tests, integration tests, coverage, build, and package-content verification. **All pass: `tsc --noEmit`, 25 vitest tests, v8 coverage, `tsup` build, `npm pack --dry-run` (6 files).**
 - [x] 5.5 Update changelog and version metadata for the streaming capability. **Version bumped to 0.2.0; `CHANGELOG.md` added.**

@@ -15,6 +15,34 @@ function isWeatherQuestion(text: string): boolean {
   return /天气|weather/i.test(text);
 }
 
+function isStreamRequest(text: string): boolean {
+  return /流式|stream|讲故事|讲个故事/i.test(text);
+}
+
+/**
+ * 流式回复演示：逐段产出文本并带有间隔，
+ * 用于在企微中观察 aibot_respond_msg 流式帧的增量渲染。
+ *
+ * 对接真正的 AI 流式接口时，把这里的生成器换成
+ *   yield* streamText({ model, prompt }).textStream
+ * （需要安装 `ai` 包及对应 model provider）即可，
+ * 适配器会通过 adapter.stream() 把 textStream 翻译成企微流式帧。
+ */
+async function* streamReply(prompt: string): AsyncIterable<string> {
+  const chunks = [
+    `收到「${prompt}」，下面用流式回复演示：\n\n`,
+    "每个片段会作为一次增量更新发送给企微，",
+    "聊天窗口里会看到内容逐步增长，",
+    "直到最后一帧带 finish=true 收尾。\n\n",
+    "并发场景下，每个回调的 req_id 与 stream.id 互不串扰；",
+    "超过 9 分钟（可在 WECOM_STREAM_DEADLINE_MS 调整）会被强制收尾。",
+  ];
+  for (const chunk of chunks) {
+    yield chunk;
+    await new Promise((resolve) => setTimeout(resolve, 300));
+  }
+}
+
 export function createBot(): Chat {
   const bot = new Chat({
     userName: process.env.WECOM_BOT_USERNAME ?? "wecom-bot",
@@ -28,6 +56,13 @@ export function createBot(): Chat {
   // 线程中的每一条消息都会触发，不需要调用 subscribe()。
   bot.onDirectMessage(async (thread, message) => {
     console.log(`Received direct message in thread ${thread.id}: ${message.text}`);
+
+    if (isStreamRequest(message.text)) {
+      // 流式回复：thread.post(asyncIterable) 会派发到 adapter.stream()，
+      // 由适配器翻译成企微 aibot_respond_msg 流式帧。
+      await thread.post(streamReply(message.text));
+      return;
+    }
 
     if (isWeatherQuestion(message.text)) {
       // 同一次 handler 调用内的多步骤回复：
@@ -52,6 +87,11 @@ export function createBot(): Chat {
     console.log(`Received mention in thread ${thread.id}: ${message.text}`);
     await thread.subscribe();
 
+    if (isStreamRequest(message.text)) {
+      await thread.post(streamReply(message.text));
+      return;
+    }
+
     if (isWeatherQuestion(message.text)) {
       await thread.post("稍等，正在查询天气…");
       const weather = await fetchWeather("Guangzhou");
@@ -74,6 +114,11 @@ export function createBot(): Chat {
   bot.onSubscribedMessage(async (thread, message) => {
     console.log(`Received subscribed message in thread ${thread.id}: ${message.text}`);
     if (!message.isMention) return;
+
+    if (isStreamRequest(message.text)) {
+      await thread.post(streamReply(message.text));
+      return;
+    }
 
     if (isWeatherQuestion(message.text)) {
       await thread.post("稍等，正在查询天气…");

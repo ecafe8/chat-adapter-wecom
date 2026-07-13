@@ -26,7 +26,7 @@ export function resolveConfig(config: WeComAdapterConfig = {}): ResolvedWeComAda
     reconnectDelayMs: config.reconnectDelayMs ?? numberEnv(process.env.WECOM_RECONNECT_DELAY_MS, 1_000),
     maxReconnectDelayMs: config.maxReconnectDelayMs ?? numberEnv(process.env.WECOM_MAX_RECONNECT_DELAY_MS, 30_000),
     streamDeadlineMs,
-    streamCoalesceMs: config.streamCoalesceMs ?? numberEnv(process.env.WECOM_STREAM_COALESCE_MS, 100),
+    streamCoalesceMs: config.streamCoalesceMs ?? numberEnv(process.env.WECOM_STREAM_COALESCE_MS, 1_000),
     logger: config.logger,
     webSocketFactory: config.webSocketFactory,
   };

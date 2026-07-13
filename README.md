@@ -73,7 +73,7 @@ The long-connection Secret is different from the Token and EncodingAESKey used b
 | `WECOM_RECONNECT_DELAY_MS` | No | Initial reconnect delay, defaults to 1000 |
 | `WECOM_MAX_RECONNECT_DELAY_MS` | No | Maximum reconnect delay, defaults to 30000 |
 | `WECOM_STREAM_DEADLINE_MS` | No | Maximum stream lifetime before forced finalization, defaults to 540000 (9 min). Clamped to the WeCom 10-minute limit. |
-| `WECOM_STREAM_COALESCE_MS` | No | Minimum interval between stream update frames, defaults to 100. Batches rapid chunks to respect WeCom rate limits. |
+| `WECOM_STREAM_COALESCE_MS` | No | Minimum interval between stream update frames, defaults to 1000. WeCom limits each conversation to 30 messages/minute (1000/hour); batches rapid chunks to stay under that. |
 
 ## Supported Features
 

@@ -39,15 +39,15 @@ describe("WeComStreamer", () => {
   it("sends accumulated content frames with stable req_id and stream.id, finishing with finish:true (4.1)", async () => {
     const { streamer, sent } = createStreamer({});
     await streamer.run(fromChunks(["a", "b", "c"]));
-    const streamIds = new Set(sent.map((f) => f.body.stream_id));
+    const streamIds = new Set(sent.map((f) => f.body.stream.id));
     expect(streamIds.size).toBe(1);
     expect(sent.every((f) => f.headers.req_id === "req-1")).toBe(true);
     expect(sent.every((f) => f.cmd === "aibot_respond_msg")).toBe(true);
-    expect(sent.every((f) => f.body.msgtype === "markdown")).toBe(true);
-    expect(sent.at(-1)?.body.finish).toBe(true);
-    expect(sent.slice(0, -1).every((f) => f.body.finish === false)).toBe(true);
-    expect(sent.map((f) => f.body.markdown.content)).toEqual(["a", "ab", "abc", "abc"]);
-    expect(sent.at(-1)?.body.stream_id).toBe(streamer.streamId);
+    expect(sent.every((f) => f.body.msgtype === "stream")).toBe(true);
+    expect(sent.at(-1)?.body.stream.finish).toBe(true);
+    expect(sent.slice(0, -1).every((f) => f.body.stream.finish === false)).toBe(true);
+    expect(sent.map((f) => f.body.stream.content)).toEqual(["a", "ab", "abc", "abc"]);
+    expect(sent.at(-1)?.body.stream.id).toBe(streamer.streamId);
   });
 
   it("uses a different stream.id per response and keeps content isolated (4.2)", async () => {
@@ -57,10 +57,10 @@ describe("WeComStreamer", () => {
     expect(a.streamer.streamId).not.toBe(b.streamer.streamId);
     expect(a.sent.every((f) => f.headers.req_id === "req-a")).toBe(true);
     expect(b.sent.every((f) => f.headers.req_id === "req-b")).toBe(true);
-    expect(a.sent.every((f) => f.body.stream_id === a.streamer.streamId)).toBe(true);
-    expect(b.sent.every((f) => f.body.stream_id === b.streamer.streamId)).toBe(true);
-    expect(a.sent.at(-1)?.body.markdown.content).toBe("12");
-    expect(b.sent.at(-1)?.body.markdown.content).toBe("xy");
+    expect(a.sent.every((f) => f.body.stream.id === a.streamer.streamId)).toBe(true);
+    expect(b.sent.every((f) => f.body.stream.id === b.streamer.streamId)).toBe(true);
+    expect(a.sent.at(-1)?.body.stream.content).toBe("12");
+    expect(b.sent.at(-1)?.body.stream.content).toBe("xy");
   });
 
   it("sends a best-effort finish frame then rethrows when the iterator fails (4.3)", async () => {
@@ -70,8 +70,8 @@ describe("WeComStreamer", () => {
       throw new Error("iterator failed");
     }
     await expect(streamer.run(failing())).rejects.toThrow("iterator failed");
-    expect(sent.at(-1)?.body.finish).toBe(true);
-    expect(sent.at(-1)?.body.markdown.content).toBe("partial");
+    expect(sent.at(-1)?.body.stream.finish).toBe(true);
+    expect(sent.at(-1)?.body.stream.content).toBe("partial");
   });
 
   it("finalizes with a finish frame when the deadline is exceeded (4.3)", async () => {
@@ -81,8 +81,8 @@ describe("WeComStreamer", () => {
       await new Promise((r) => setTimeout(r, 40));
     }
     await streamer.run(slow());
-    expect(sent.at(-1)?.body.finish).toBe(true);
-    expect(sent.at(-1)?.body.markdown.content).toBe("hello");
+    expect(sent.at(-1)?.body.stream.finish).toBe(true);
+    expect(sent.at(-1)?.body.stream.content).toBe("hello");
   });
 
   it("does not send a finish frame on disconnect and releases context (4.3)", async () => {
@@ -98,7 +98,7 @@ describe("WeComStreamer", () => {
     streamer.cancel("disconnect");
     resolveNext!();
     await runPromise;
-    expect(sent.every((f) => !f.body.finish)).toBe(true);
+    expect(sent.every((f) => !f.body.stream.finish)).toBe(true);
     expect(done).toBe(true);
   });
 
@@ -118,7 +118,7 @@ describe("WeComStreamer", () => {
       { type: "plan_update", title: "P" } as StreamChunk,
       "c",
     ]));
-    expect(sent.at(-1)?.body.markdown.content).toBe("abc");
+    expect(sent.at(-1)?.body.stream.content).toBe("abc");
   });
 
   it("calls onDone on normal completion (leak cleanup 4.6)", async () => {
@@ -142,9 +142,9 @@ describe("WeComStreamer", () => {
   it("coalesces rapid chunks into fewer frames (3.6)", async () => {
     const { streamer, sent } = createStreamer({ coalesceMs: 5 });
     await streamer.run(fromChunks(["a", "b", "c", "d"]));
-    const updates = sent.filter((f) => !f.body.finish);
+    const updates = sent.filter((f) => !f.body.stream.finish);
     expect(updates.length).toBeLessThanOrEqual(3);
-    expect(sent.at(-1)?.body.finish).toBe(true);
-    expect(sent.at(-1)?.body.markdown.content).toBe("abcd");
+    expect(sent.at(-1)?.body.stream.finish).toBe(true);
+    expect(sent.at(-1)?.body.stream.content).toBe("abcd");
   });
 });

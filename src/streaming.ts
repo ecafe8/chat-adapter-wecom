@@ -137,10 +137,12 @@ export class WeComStreamer {
       cmd: "aibot_respond_msg",
       headers: { req_id: this.reqId },
       body: {
-        msgtype: "markdown",
-        markdown: { content: this.accumulated },
-        stream_id: this.streamId,
-        finish,
+        msgtype: "stream",
+        stream: {
+          id: this.streamId,
+          finish,
+          content: this.accumulated,
+        },
       },
     };
     try {

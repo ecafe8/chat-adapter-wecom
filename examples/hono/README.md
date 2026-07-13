@@ -40,6 +40,20 @@ The HTTP server listens on `http://localhost:8787` by default.
 
 The example registers `onDirectMessage`, `onNewMention`, and `onSubscribedMessage`. Direct messages use `onDirectMessage`; group mentions in unsubscribed threads use `onNewMention`; follow-up messages in subscribed threads use `onSubscribedMessage`. Chat SDK otherwise falls back to routing unhandled direct messages through `onNewMention` for backward compatibility.
 
+### Multi-step replies ("please wait" -> tool call -> final answer)
+
+Send a message containing "天气" (weather) to see a two-step reply:
+
+1. The bot immediately posts "稍等，正在查询天气…".
+2. It awaits a simulated third-party API call (`fetchWeather` in `src/bot.ts` — replace with a real fetch).
+3. It posts the final answer as a follow-up message in the same thread.
+
+This works with a single handler invocation and plain sequential `await thread.post(...)` calls — no subscription is required for this pattern.
+
+### Continuing a conversation across multiple messages
+
+If you want the bot to keep responding to *new* messages in a group thread (e.g. the user asks a follow-up question later), call `thread.subscribe()` once — this example does it in `onNewMention` — so later messages in that thread route to `onSubscribedMessage` instead of falling through unmention patterns. Direct message (single-chat) threads do not need `subscribe()`; every message routes to `onDirectMessage` already.
+
 Check HTTP health:
 
 ```bash

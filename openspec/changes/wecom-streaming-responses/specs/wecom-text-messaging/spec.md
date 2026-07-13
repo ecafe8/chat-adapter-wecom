@@ -13,4 +13,4 @@ The adapter SHALL send normalized text replies through the WeCom long-connection
 
 #### Scenario: Async text stream is posted
 - **WHEN** a thread posts an asynchronous text stream associated with an incoming callback
-- **THEN** the adapter sends native WeCom stream frames instead of requiring a message edit operation
+- **THEN** Chat SDK dispatches to the adapter's `stream()` method, which sends native WeCom stream frames instead of requiring a message edit operation, while plain text/markdown posting still routes through `postMessage`

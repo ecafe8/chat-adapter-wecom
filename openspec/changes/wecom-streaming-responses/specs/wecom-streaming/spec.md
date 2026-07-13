@@ -1,7 +1,7 @@
 ## ADDED Requirements
 
 ### Requirement: Native streaming replies
-The adapter SHALL translate a Chat SDK asynchronous text stream into WeCom `aibot_respond_msg` stream frames and SHALL send the accumulated content for each update.
+The adapter SHALL implement the Chat SDK `Adapter.stream()` method to consume an `AsyncIterable<string | StreamChunk>` and translate it into WeCom `aibot_respond_msg` stream frames, SHALL send the accumulated content for each update, and SHALL return a `RawMessage` rather than `null` so Chat SDK's post+edit fallback never runs for WeCom.
 
 #### Scenario: Stream sends incremental content
 - **WHEN** a thread posts an async iterable that yields multiple text chunks
@@ -10,6 +10,17 @@ The adapter SHALL translate a Chat SDK asynchronous text stream into WeCom `aibo
 #### Scenario: Stream completes
 - **WHEN** the async iterable finishes normally
 - **THEN** the adapter sends a final frame with `finish: true` using the same stream ID
+
+### Requirement: Structured chunk handling
+The adapter SHALL extract text from `MarkdownTextChunk` entries and SHALL ignore `TaskUpdateChunk` and `PlanUpdateChunk` entries, because WeCom streaming carries text only. Plain string chunks SHALL be appended directly to the accumulated content.
+
+#### Scenario: Markdown text chunk
+- **WHEN** the iterable yields a `MarkdownTextChunk` with `type: "markdown_text"`
+- **THEN** the adapter appends `chunk.text` to the accumulated content for the next stream frame
+
+#### Scenario: Non-text structured chunk
+- **WHEN** the iterable yields a `task_update` or `plan_update` chunk
+- **THEN** the adapter ignores it and continues accumulating text from subsequent chunks without sending an empty update
 
 ### Requirement: Stream identity
 The adapter SHALL generate one unique stream ID per response stream and SHALL reuse it for every frame belonging to that response.

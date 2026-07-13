@@ -38,7 +38,7 @@ The HTTP server listens on `http://localhost:8787` by default.
 4. Check the terminal for the received message log.
 5. Confirm the robot replies in the group.
 
-The example registers both `onNewMention` and `onSubscribedMessage`. Chat SDK routes new mentions in unsubscribed threads to the former and follow-up messages in subscribed threads to the latter.
+The example registers `onDirectMessage`, `onNewMention`, and `onSubscribedMessage`. Direct messages use `onDirectMessage`; group mentions in unsubscribed threads use `onNewMention`; follow-up messages in subscribed threads use `onSubscribedMessage`. Chat SDK otherwise falls back to routing unhandled direct messages through `onNewMention` for backward compatibility.
 
 Check HTTP health:
 

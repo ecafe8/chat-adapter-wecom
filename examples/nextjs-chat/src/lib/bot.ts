@@ -18,6 +18,10 @@ export function getBot(): Chat {
         wecom: createWeComAdapter(),
       },
     });
+    bot.onDirectMessage(async (thread, message) => {
+      console.log(`Received direct message in thread ${thread.id}: ${message.text}`);
+      await thread.post(`received direct message: ${message.text}`);
+    });
     bot.onNewMention(async (thread, message) => {
       console.log(`Received mention in thread ${thread.id}: ${message.text}`);
       await thread.post(`received: ${message.text}, reply: ${message.text}`);

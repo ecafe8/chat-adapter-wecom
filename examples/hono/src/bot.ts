@@ -11,15 +11,20 @@ export function createBot(): Chat {
     },
   });
 
+  bot.onDirectMessage(async (thread, message) => {
+    console.log(`Received direct message in thread ${thread.id}: ${message.text}`);
+    await thread.post(`received direct message: ${message.text}`);
+  });
+
   bot.onNewMention(async (thread, message) => {
     console.log(`Received mention in thread ${thread.id}: ${message.text}`);
-    await thread.post(`received: ${message.text}, reply: ${message.text}`);
+    await thread.post(`received - Mention: ${message.text}, reply: ${message.text}`);
   });
 
   bot.onSubscribedMessage(async (thread, message) => {
     console.log(`Received subscribed message in thread ${thread.id}: ${message.text}`);
     if (message.isMention) {
-      await thread.post(`received: ${message.text}, reply: ${message.text}`);
+      await thread.post(`received - Message: ${message.text}, reply: ${message.text}`);
     }
   });
 

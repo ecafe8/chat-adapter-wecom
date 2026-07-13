@@ -2,12 +2,13 @@ import { randomUUID } from "node:crypto";
 import { WebSocket } from "ws";
 import { authenticationError, networkError } from "./errors.js";
 import type { Logger } from "chat";
-import type { ResolvedWeComAdapterConfig, WeComFrame, WebSocketLike } from "./types.js";
+import type { ResolvedWeComAdapterConfig, WeComFrame, WeComStreamFrame, WebSocketLike } from "./types.js";
 
 export interface WeComProtocolClientOptions {
   config: ResolvedWeComAdapterConfig;
   logger: Logger;
   onFrame: (frame: WeComFrame) => Promise<void>;
+  onDisconnect?: () => void;
 }
 
 export class WeComProtocolClient {
@@ -37,7 +38,7 @@ export class WeComProtocolClient {
     await this.runPromise?.catch(() => undefined);
   }
 
-  send(frame: Record<string, unknown>): void {
+  send(frame: WeComStreamFrame | Record<string, unknown>): void {
     if (!this.socket || this.socket.readyState !== this.socket.OPEN) throw networkError("WeCom WebSocket is not connected");
     this.socket.send(JSON.stringify(frame));
   }
@@ -62,7 +63,10 @@ export class WeComProtocolClient {
       const onClose = () => {
         this.clearHeartbeat();
         if (!subscribed) reject(networkError("WeCom socket closed before subscription"));
-        else resolve();
+        else {
+          this.options.onDisconnect?.();
+          resolve();
+        }
       };
       socket.on("close", onClose);
       socket.on("error", (error: Error) => this.options.logger.error("WeCom WebSocket error", error));

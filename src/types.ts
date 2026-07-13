@@ -14,7 +14,12 @@ export interface WeComPollingConfig {
   maxReconnectDelayMs?: number;
 }
 
-export interface WeComAdapterConfig extends WeComPollingConfig {
+export interface WeComStreamingConfig {
+  streamDeadlineMs?: number;
+  streamCoalesceMs?: number;
+}
+
+export interface WeComAdapterConfig extends WeComPollingConfig, WeComStreamingConfig {
   botId?: string;
   secret?: string;
   wsUrl?: string;
@@ -31,6 +36,8 @@ export interface ResolvedWeComAdapterConfig {
   heartbeatIntervalMs: number;
   reconnectDelayMs: number;
   maxReconnectDelayMs: number;
+  streamDeadlineMs: number;
+  streamCoalesceMs: number;
   logger?: Logger;
   webSocketFactory?: WebSocketFactory;
 }
@@ -46,6 +53,17 @@ export interface WeComMessageCallback {
     from: { userid: string };
     msgtype: "text" | string;
     text?: { content: string };
+  };
+}
+
+export interface WeComStreamFrame {
+  cmd: "aibot_respond_msg";
+  headers: { req_id: string };
+  body: {
+    msgtype: "markdown";
+    markdown: { content: string };
+    stream_id: string;
+    finish: boolean;
   };
 }
 

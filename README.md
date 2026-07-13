@@ -35,6 +35,21 @@ bot.onNewMention(async (thread, message) => {
 await bot.initialize();
 ```
 
+### Streaming replies
+
+When a thread is posted with an `AsyncIterable<string>` (e.g. an AI SDK `textStream`), the adapter dispatches to its native `stream()` hook and emits WeCom `aibot_respond_msg` stream frames: an initial frame, incremental updates carrying accumulated content, and a final `finish: true` frame.
+
+```ts
+import { streamText } from "ai";
+
+bot.onNewMention(async (thread, message) => {
+  const result = streamText({ model, prompt: message.text });
+  await thread.post(result.textStream);
+});
+```
+
+Each stream preserves the originating WeCom callback `req_id` and uses one stable `stream.id`, so concurrent group callbacks never cross. Streams that exceed the configured deadline are finalized with a best-effort final frame; if the WebSocket drops mid-stream the context is released and the next reconnect handles later callbacks. Non-text `StreamChunk` types (`task_update`, `plan_update`) are ignored — only `markdown_text` and plain string chunks are forwarded.
+
 Explicit configuration takes precedence over environment variables:
 
 ```ts
@@ -57,6 +72,8 @@ The long-connection Secret is different from the Token and EncodingAESKey used b
 | `WECOM_HEARTBEAT_INTERVAL_MS` | No | Heartbeat interval, defaults to 30000 |
 | `WECOM_RECONNECT_DELAY_MS` | No | Initial reconnect delay, defaults to 1000 |
 | `WECOM_MAX_RECONNECT_DELAY_MS` | No | Maximum reconnect delay, defaults to 30000 |
+| `WECOM_STREAM_DEADLINE_MS` | No | Maximum stream lifetime before forced finalization, defaults to 540000 (9 min). Clamped to the WeCom 10-minute limit. |
+| `WECOM_STREAM_COALESCE_MS` | No | Minimum interval between stream update frames, defaults to 100. Batches rapid chunks to respect WeCom rate limits. |
 
 ## Supported Features
 
@@ -65,9 +82,9 @@ The long-connection Secret is different from the Token and EncodingAESKey used b
 | Single-chat text | Supported |
 | Group `@robot` text | Supported |
 | Text and basic Markdown replies | Supported |
+| Native streaming | Supported via `thread.post(asyncIterable)` |
 | Persistent callback de-duplication | Supported through `StateAdapter` |
 | Heartbeat and reconnect | Supported |
-| Native streaming | Planned in `wecom-streaming-responses` |
 | Template cards and buttons | Planned |
 | Message history | Not provided by the intelligent robot API |
 | Reactions, edit, delete | Not supported in this version |

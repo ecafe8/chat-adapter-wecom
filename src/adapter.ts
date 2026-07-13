@@ -11,6 +11,8 @@ import {
   type FormattedContent,
   type Logger,
   type RawMessage,
+  type StreamChunk,
+  type StreamOptions,
   type ThreadInfo,
   type WebhookOptions,
 } from "chat";
@@ -20,6 +22,7 @@ import { resolveConfig } from "./config.js";
 import { WeComProtocolClient } from "./protocol.js";
 import { getCurrentRequestId, runWithRequestId } from "./request-context.js";
 import { WeComRuntimeState } from "./state.js";
+import { WeComStreamer, type WeComStreamCancelReason } from "./streaming.js";
 import { channelIdFromThreadId, decodeThreadId, encodeThreadId } from "./thread-id.js";
 import type { ResolvedWeComAdapterConfig, WeComAdapterConfig, WeComFrame, WeComMessageCallback, WeComThreadId } from "./types.js";
 
@@ -34,6 +37,7 @@ export class WeComAdapter implements Adapter<WeComThreadId, WeComMessageCallback
   private readonly protocol: WeComProtocolClient;
   private chat: ChatInstance | null = null;
   private state: WeComRuntimeState | null = null;
+  private readonly activeStreams = new Map<string, WeComStreamer>();
   private logger: Logger;
 
   constructor(config: WeComAdapterConfig = {}) {
@@ -45,6 +49,7 @@ export class WeComAdapter implements Adapter<WeComThreadId, WeComMessageCallback
       config: this.config,
       logger: this.logger,
       onFrame: (frame) => this.processFrame(frame),
+      onDisconnect: () => this.cancelActiveStreams("disconnect"),
     });
   }
 
@@ -56,6 +61,7 @@ export class WeComAdapter implements Adapter<WeComThreadId, WeComMessageCallback
   }
 
   async disconnect(): Promise<void> {
+    this.cancelActiveStreams("manual");
     await this.protocol.stop();
     this.chat = null;
     this.state = null;
@@ -111,6 +117,27 @@ export class WeComAdapter implements Adapter<WeComThreadId, WeComMessageCallback
     return { id: requestId, threadId, raw: {} as WeComMessageCallback };
   }
 
+  async stream(
+    threadId: string,
+    textStream: AsyncIterable<string | StreamChunk>,
+    _options?: StreamOptions,
+  ): Promise<RawMessage<WeComMessageCallback> | null> {
+    if (!this.chat) throw new Error("WeCom adapter is not initialized");
+    const reqId = getCurrentRequestId();
+    if (!reqId) throw new Error(`No active WeCom callback context for streaming to ${threadId}`);
+    const streamer = new WeComStreamer({
+      threadId,
+      reqId,
+      protocol: this.protocol,
+      logger: this.logger,
+      deadlineMs: this.config.streamDeadlineMs,
+      coalesceMs: this.config.streamCoalesceMs,
+      onDone: (streamId) => this.activeStreams.delete(streamId),
+    });
+    this.activeStreams.set(streamer.streamId, streamer);
+    return streamer.run(textStream);
+  }
+
   async fetchMessages(_threadId: string, _options?: FetchOptions): Promise<FetchResult<WeComMessageCallback>> {
     return { messages: [] };
   }
@@ -125,6 +152,13 @@ export class WeComAdapter implements Adapter<WeComThreadId, WeComMessageCallback
   async removeReaction(_threadId: string, _messageId: string, _emoji: EmojiValue | string): Promise<void> { throw new NotImplementedError("WeCom reactions are not supported", "removeReaction"); }
   async editMessage(_threadId: string, _messageId: string, _message: AdapterPostableMessage): Promise<RawMessage<WeComMessageCallback>> { throw new NotImplementedError("WeCom message editing is not supported", "editMessage"); }
   async deleteMessage(_threadId: string, _messageId: string): Promise<void> { throw new NotImplementedError("WeCom message deletion is not supported", "deleteMessage"); }
+
+  private cancelActiveStreams(reason: WeComStreamCancelReason): void {
+    if (this.activeStreams.size === 0) return;
+    const streams = Array.from(this.activeStreams.values());
+    this.activeStreams.clear();
+    for (const streamer of streams) streamer.cancel(reason);
+  }
 
   private async processFrame(frame: WeComFrame): Promise<void> {
     if (!this.chat || !this.state || frame.cmd !== "aibot_msg_callback") return;

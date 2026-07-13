@@ -1,6 +1,6 @@
 {
   "name": "chat-adapter-wecom",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "WeCom intelligent robot adapter for Chat SDK",
   "type": "module",
   "main": "./dist/index.js",
